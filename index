@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Activity</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --primary: #77a766;
+            --secondary: #e8d227;
+            --text: #1e293b;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #ffffff;
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Prevents scrollbars during confetti */
+        }
+
+        h2 { color: var(--primary); margin-bottom: 20px; font-weight: 700; }
+
+        #grid-container {
+            display: grid;
+            grid-template-columns: repeat(5, 60px);
+            grid-template-rows: repeat(5, 60px);
+            gap: 5px;
+            background-color: #f1f5f9;
+            border: 5px solid var(--primary);
+            border-radius: 12px;
+            padding: 5px;
+            margin-bottom: 25px;
+        }
+
+        .cell {
+            width: 60px;
+            height: 60px;
+            background-color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            font-size: 24px;
+        }
+
+        .wall {
+            background-color: #cbd5e1;
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(255,255,255,.3) 5px, rgba(255,255,255,.3) 10px);
+        }
+
+        .goal {
+            background-color: #fffbeb;
+            border: 3px dashed var(--secondary);
+            box-sizing: border-box;
+        }
+
+        #character {
+            width: 45px;
+            height: 45px;
+            background-color: var(--primary);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            box-shadow: 0 4px 0 #5a854a;
+            transition: transform 0.1s;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-areas: 
+                ". up ."
+                "left reached right"
+                ". down .";
+            gap: 12px;
+        }
+
+        button {
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            background-color: var(--primary);
+            color: white;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #5a854a;
+            min-width: 110px;
+            transition: all 0.1s;
+        }
+
+        button:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #5a854a;
+        }
+
+        .btn-up { grid-area: up; }
+        .btn-down { grid-area: down; }
+        .btn-left { grid-area: left; }
+        .btn-right { grid-area: right; }
+        
+        .btn-reached { 
+            grid-area: reached; 
+            background-color: var(--secondary); 
+            color: #451a03;
+            box-shadow: 0 4px 0 #bca81a;
+        }
+        .btn-reached:active {
+            box-shadow: 0 2px 0 #bca81a;
+        }
+
+        #message {
+            margin-top: 25px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            height: 30px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Maze Navigator</h2>
+
+    <div id="grid-container"></div>
+
+    <div class="controls">
+        <button class="btn-up" onclick="move('up')">Move up 1 step</button>
+        <button class="btn-left" onclick="move('left')">Move left 1 step</button>
+        <button class="btn-reached" onclick="checkWin()">Reached</button>
+        <button class="btn-right" onclick="move('right')">Move right 1 step</button>
+        <button class="btn-down" onclick="move('down')">Move down 1 step</button>
+    </div>
+
+    <div id="message"></div>
+
+    <script>
+        const gridSize = 5;
+        let charPos = { x: 0, y: 0 };
+        const goalPos = { x: 4, y: 4 };
+
+        // 0 = Path, 1 = Wall (Creates a clear single path)
+        const mazeLayout = [
+            [0, 1, 1, 1, 1],
+            [0, 0, 0, 1, 1],
+            [1, 1, 0, 1, 1],
+            [1, 1, 0, 0, 0],
+            [1, 1, 1, 1, 0]
+        ];
+
+        function initGrid() {
+            const container = document.getElementById('grid-container');
+            container.innerHTML = '';
+            for (let y = 0; y < gridSize; y++) {
+                for (let x = 0; x < gridSize; x++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.id = `cell-${x}-${y}`;
+                    if (mazeLayout[y][x] === 1) cell.classList.add('wall');
+                    if (x === goalPos.x && y === goalPos.y) {
+                        cell.classList.add('goal');
+                        cell.innerHTML = "🚩";
+                    }
+                    container.appendChild(cell);
+                }
+            }
+            renderChar();
+        }
+
+        function renderChar() {
+            const oldChar = document.getElementById('character');
+            if (oldChar) oldChar.remove();
+            const cell = document.getElementById(`cell-${charPos.x}-${charPos.y}`);
+            const char = document.createElement('div');
+            char.id = 'character';
+            char.innerHTML = '●';
+            cell.appendChild(char);
+        }
+
+        function move(dir) {
+            document.getElementById('message').innerText = "";
+            let newX = charPos.x;
+            let newY = charPos.y;
+
+            if (dir === 'up') newY--;
+            if (dir === 'down') newY++;
+            if (dir === 'left') newX--;
+            if (dir === 'right') newX++;
+
+            if (newX >= 0 && newX < gridSize && newY >= 0 && newY < gridSize) {
+                if (mazeLayout[newY][newX] === 0) {
+                    charPos.x = newX;
+                    charPos.y = newY;
+                    renderChar();
+                } else {
+                    showMsg("That's a wall!", "#dc2626");
+                }
+            }
+        }
+
+        function showMsg(txt, color) {
+            const msg = document.getElementById('message');
+            msg.innerText = txt;
+            msg.style.color = color;
+        }
+
+        function checkWin() {
+            if (charPos.x === goalPos.x && charPos.y === goalPos.y) {
+                showMsg("🎉 Success! You've reached the goal!", "#77a766");
+                
+                // Confetti Trigger
+                confetti({
+                    particleCount: 150,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    colors: ['#77a766', '#e8d227', '#ffffff']
+                });
+            } else {
+                showMsg("Keep going! Not there yet.", "#e8d227");
+            }
+        }
+
+        initGrid();
+    </script>
+</body>
+</html>
