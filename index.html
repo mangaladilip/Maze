@@ -80,7 +80,7 @@
             display: grid;
             grid-template-areas: 
                 ". up ."
-                "left reached right"
+                "left reset right"
                 ". down .";
             gap: 12px;
         }
@@ -109,14 +109,14 @@
         .btn-left { grid-area: left; }
         .btn-right { grid-area: right; }
         
-        .btn-reached { 
-            grid-area: reached; 
-            background-color: var(--secondary); 
-            color: #451a03;
-            box-shadow: 0 4px 0 #bca81a;
+        .btn-reset { 
+            grid-area: reset; 
+            background-color: #dc2626; 
+            color: white;
+            box-shadow: 0 4px 0 #991b1b;
         }
-        .btn-reached:active {
-            box-shadow: 0 2px 0 #bca81a;
+        .btn-reset:active {
+            box-shadow: 0 2px 0 #991b1b;
         }
 
         #message {
@@ -136,7 +136,7 @@
     <div class="controls">
         <button class="btn-up" onclick="move('up')">Move up 1 step</button>
         <button class="btn-left" onclick="move('left')">Move left 1 step</button>
-        <button class="btn-reached" onclick="checkWin()">Reached</button>
+        <button class="btn-reset" onclick="reset()">Reset</button>
         <button class="btn-right" onclick="move('right')">Move right 1 step</button>
         <button class="btn-down" onclick="move('down')">Move down 1 step</button>
     </div>
@@ -227,6 +227,13 @@
             } else {
                 showMsg("Keep going! Not there yet.", "#e8d227");
             }
+        }
+
+        function reset() {
+            charPos.x = 0;
+            charPos.y = 0;
+            document.getElementById('message').innerText = "";
+            initGrid();
         }
 
         initGrid();
